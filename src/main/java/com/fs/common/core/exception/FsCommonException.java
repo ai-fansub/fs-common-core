@@ -12,8 +12,10 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.sql.SQLException;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.fs.common.core.exception.ErrorType.ERROR_SQL;
 import static com.fs.common.core.exception.ErrorType.ERROR_SYSTEM;
@@ -119,6 +121,8 @@ public class FsCommonException extends NestedRuntimeException {
                 setErrorCode(ERROR_SYSTEM, ERROR_NULL);
             }
         } else if (throwable instanceof MethodArgumentNotValidException){
+            MethodArgumentNotValidException e =  (MethodArgumentNotValidException) throwable;
+            e.getMessage();
             setErrorCode(ERROR_SYSTEM, ERROR_PARAM_VALIDITY);
         } else if (throwable instanceof FsCommonException) {
             ErrorType type = getTypeByMessage(throwable.getMessage());
@@ -166,11 +170,39 @@ public class FsCommonException extends NestedRuntimeException {
     }
     // 다른 예외를 통해 메세지 set
     private void setMessage(Throwable throwable) {
-        // Spring DAO Exception 처럼, Cause 존재 시 그 메세지를 출력함
-        if (throwable.getCause() != null) {
+
+        String customMessage = null;
+        if (throwable instanceof MethodArgumentNotValidException) {
+            MethodArgumentNotValidException e = (MethodArgumentNotValidException) throwable;
+            // FieldError에서 필드명과 기본 메시지만 추출하여 간결하게 만듭니다.
+            List<String> errors = e.getBindingResult().getFieldErrors().stream()
+                    .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                    .collect(Collectors.toList());
+            customMessage = "Validation failed: " + String.join(", ", errors);
+        } else if (throwable instanceof NullPointerException) { // NullPointerException 특별 처리
+            // NPE는 getMessage()가 보통 null이므로, toString()을 사용하거나 고정 메시지를 사용
+            StackTraceElement[] stackTrace = throwable.getStackTrace();
+            if (stackTrace.length > 0 && stackTrace[0].getClassName().startsWith("com.mylo")) {
+                // "com.mylo" 패키지 스택트레이스에 대한 기존 로직 유지 (또는 개선)
+                customMessage = "java.lang.NullPointerException occurred at " + stackTrace[0].getClassName() + "." + stackTrace[0].getMethodName() + "(" + stackTrace[0].getFileName() + ":" + stackTrace[0].getLineNumber() + ")";
+            } else {
+                customMessage = "NullPointerException occurred. Please check for uninitialized objects.";
+                // 또는 customMessage = throwable.toString(); // "java.lang.NullPointerException"만 나옴
+            }
+        } else if (throwable.getCause() != null) {
+            // Spring DAO Exception 처럼, Cause 존재 시 그 메세지를 출력함
             setMessage(throwable.getCause().getMessage());
         } else {
             setMessage(throwable.getMessage());
+        }
+
+        // 최종적으로 FsCommonException의 message 필드를 설정
+        // 기존의 [FS_SY_XXXX ... : ] 부분을 포함하도록 수정
+        this.message = "[" + this.type.getName() + this.reason.getError() + " " + this.reason.getReason() + ": ";
+        if (customMessage != null) {
+            this.message += customMessage;
+        } else {
+            this.message += "Unknown error occurred."; // 기본 메시지
         }
     }
 
