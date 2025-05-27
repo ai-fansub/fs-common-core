@@ -7,6 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.NestedRuntimeException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.util.ObjectUtils;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
@@ -117,6 +118,8 @@ public class FsCommonException extends NestedRuntimeException {
             } else if (msg.contains("Required ")) { // 필수 파라미터 미기입 에러, 파라미터를 입력하지 않은 경우 발생
                 setErrorCode(ERROR_SYSTEM, ERROR_NULL);
             }
+        } else if (throwable instanceof MethodArgumentNotValidException){
+            setErrorCode(ERROR_SYSTEM, ERROR_PARAM_VALIDITY);
         } else if (throwable instanceof FsCommonException) {
             ErrorType type = getTypeByMessage(throwable.getMessage());
             ServiceStatusCode reason = getReasonByMessage(throwable.getMessage());
