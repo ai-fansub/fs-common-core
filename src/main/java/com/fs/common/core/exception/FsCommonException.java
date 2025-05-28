@@ -204,8 +204,8 @@ public class FsCommonException extends NestedRuntimeException {
         if (customMessage != null) {
             this.message += customMessage;
         } else {
-            String logMessage = "[" + this.type.getName() + this.reason.getError() + " " + this.reason.getReason() + ": ";
-            log.warn("{}", logMessage);
+            log.warn("{}", this.message);
+            this.message = "[" + this.type.getName() + this.reason.getError() + " " + this.reason.getReason() + ": ";
             this.message += "Unknown error occurred."; // 기본 메시지
         }
     }
