@@ -3,6 +3,7 @@ package com.fs.common.core.exception;
 
 import com.fs.common.core.model.ResultInfo;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.NestedRuntimeException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -21,6 +22,7 @@ import static com.fs.common.core.exception.ErrorType.ERROR_SQL;
 import static com.fs.common.core.exception.ErrorType.ERROR_SYSTEM;
 import static com.fs.common.core.exception.ServiceStatusCode.*;
 
+@Slf4j
 public class FsCommonException extends NestedRuntimeException {
 
     @Getter
@@ -142,7 +144,7 @@ public class FsCommonException extends NestedRuntimeException {
             // com.mylo 시작하는 스택트레이스 중 첫번째 건이 보편적으로 에러가 나는 이유이기 때문이며 디버깅을 용이하게 하기 위함
             if (cause instanceof NullPointerException) {
                 for (StackTraceElement element : cause.getStackTrace()) {
-                    if (message == null && element.getClassName().startsWith("com.mylo")) {
+                    if (message == null && element.getClassName().startsWith("com.fs")) {
                         message = "java.lang.NullPointerException occured in " + element;
                     }
                 }
@@ -198,10 +200,12 @@ public class FsCommonException extends NestedRuntimeException {
 
         // 최종적으로 FsCommonException의 message 필드를 설정
         // 기존의 [FS_SY_XXXX ... : ] 부분을 포함하도록 수정
-        this.message = "[" + this.type.getName() + this.reason.getError() + " " + this.reason.getReason() + ": ";
+//        this.message = "[" + this.type.getName() + this.reason.getError() + " " + this.reason.getReason() + ": ";
         if (customMessage != null) {
             this.message += customMessage;
         } else {
+            String logMessage = "[" + this.type.getName() + this.reason.getError() + " " + this.reason.getReason() + ": ";
+            log.warn("{}", logMessage);
             this.message += "Unknown error occurred."; // 기본 메시지
         }
     }
