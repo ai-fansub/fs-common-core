@@ -12,6 +12,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import javax.validation.ConstraintViolationException;
+import javax.validation.ValidationException;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -126,7 +128,11 @@ public class FsCommonException extends NestedRuntimeException {
             MethodArgumentNotValidException e =  (MethodArgumentNotValidException) throwable;
             e.getMessage();
             setErrorCode(ERROR_SYSTEM, ERROR_PARAM_VALIDITY);
-        } else if (throwable instanceof FsCommonException) {
+        } else if (throwable instanceof ConstraintViolationException) {
+            ConstraintViolationException e = (ConstraintViolationException) throwable;
+            e.getMessage();
+            setErrorCode(ERROR_SYSTEM, ERROR_PARAM_VALIDITY);
+        }else if (throwable instanceof FsCommonException) {
             ErrorType type = getTypeByMessage(throwable.getMessage());
             ServiceStatusCode reason = getReasonByMessage(throwable.getMessage());
 
@@ -181,6 +187,14 @@ public class FsCommonException extends NestedRuntimeException {
                     .map(error -> error.getField() + ": " + error.getDefaultMessage())
                     .collect(Collectors.toList());
             customMessage = "Validation failed: " + String.join(", ", errors);
+        } else if (throwable instanceof ConstraintViolationException) {
+            ConstraintViolationException e = (ConstraintViolationException) throwable;
+            // @RequestParam validation 에러 처리
+            List<String> errors = e.getConstraintViolations().stream()
+                    .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
+                    .collect(Collectors.toList());
+            customMessage = "Validation failed: " + String.join(", ", errors);
+            setErrorCode(ERROR_SYSTEM, ERROR_PARAM_VALIDITY);
         } else if (throwable instanceof NullPointerException) { // NullPointerException 특별 처리
             // NPE는 getMessage()가 보통 null이므로, toString()을 사용하거나 고정 메시지를 사용
             StackTraceElement[] stackTrace = throwable.getStackTrace();
